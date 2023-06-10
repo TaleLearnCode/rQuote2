@@ -1,7 +1,11 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using TaleLearnCode.rQuote.Entities;
+using TaleLearnCode.rQuote.Exceptions;
+using TaleLearnCode.rQuote.Requests;
 
 namespace TaleLearnCode.rQuote;
 
@@ -51,6 +55,33 @@ public class QuoteFunctions
 		catch (Exception ex) when (ex is ArgumentNullException || ex is ArgumentException)
 		{
 			return request.CreateBadRequestResponse(ex);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError("{FunctionName} - Unexpected exception: {ExceptionMessage}", nameof(GetQuoteByIdAsync), ex.Message);
+			return request.CreateErrorResponse(ex);
+		}
+	}
+
+	[Function("CreateQuote")]
+	public async Task<HttpResponseData> CreateQuoteAsync(
+		[HttpTrigger(AuthorizationLevel.Function, "post", Route = "quotes")] HttpRequestData request)
+	{
+		try
+		{
+			QuoteRequest quoteRequest = await request.GetRequestParametersAsync<QuoteRequest>(_jsonSerializerOptions);
+			string newQuoteId = await QuoteServices.CreateQuoteAsync(_sqlContext, quoteRequest);
+			string response = FunctionHelpers.GetFunctionUrl($"quotes/{newQuoteId}");
+			return request.CreateCreatedResponse(response);
+		}
+		catch (Exception ex) when (ex is HttpRequestDataException || ex is ObjectAlreadyExistsException<Quote>)
+		{
+			return request.CreateBadRequestResponse(ex);
+		}
+		catch (Exception ex) when (ex is DbUpdateException)
+		{
+			_logger.LogError("{FunctionName} - Entity Framework Exception: {ExceptionMessage}", nameof(CreateQuoteAsync), ex.InnerException?.Message ?? ex.Message);
+			return request.CreateBadRequestResponse(ex.InnerException ?? ex);
 		}
 		catch (Exception ex)
 		{
