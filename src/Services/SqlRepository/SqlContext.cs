@@ -1,13 +1,12 @@
-﻿using TaleLearnCode.rQuote.SqlRepository;
+﻿using Microsoft.Data.SqlClient;
+using TaleLearnCode.rQuote.SqlRepository;
 
 namespace TaleLearnCode.rQuote;
 
 public class SqlContext : DbContext
 {
 
-	private readonly string? _connectionString = string.Empty;
-
-	public SqlContext(string connectionString) => _connectionString = connectionString;
+	public SqlContext() : base() { }
 
 	public SqlContext(DbContextOptions<SqlContext> options) : base(options) { }
 
@@ -17,7 +16,12 @@ public class SqlContext : DbContext
 	public virtual DbSet<Tag> Tags { get; set; } = null!;
 
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-			=> optionsBuilder.UseSqlServer(_connectionString);
+	{
+		SqlConnection connection = new();
+		string? envConString = Environment.GetEnvironmentVariable("SqlConnectionString");
+		connection.ConnectionString = envConString ?? "Data Source=Beast;Initial Catalog=rQuote;Integrated Security=True;TrustServerCertificate=True";
+		optionsBuilder.UseSqlServer(connection);
+	}
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
