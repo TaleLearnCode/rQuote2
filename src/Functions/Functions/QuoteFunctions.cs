@@ -96,16 +96,9 @@ public class QuoteFunctions
 	{
 		try
 		{
-
-			ArgumentNullException.ThrowIfNull(id);
-			if (!int.TryParse(id, out int quoteId))
-				throw new ArgumentException($"The {nameof(id)} value must be numeric.");
-
 			QuoteRequest quoteRequest = await request.GetRequestParametersAsync<QuoteRequest>(_jsonSerializerOptions);
-			await QuoteServices.UpdateQuoteAsync(_sqlContext, quoteRequest, quoteId);
-
+			await QuoteServices.UpdateQuoteAsync(_sqlContext, quoteRequest, GetQuoteId(id));
 			return request.CreateResponse(HttpStatusCode.NoContent);
-
 		}
 		catch (Exception ex) when (ex is ArgumentNullException || ex is ArgumentException || ex is HttpRequestDataException || ex is ObjectDoesNotExistException<Quote>)
 		{
@@ -161,4 +154,5 @@ public class QuoteFunctions
 			throw new ArgumentException($"The {nameof(id)} value must be numeric.");
 		return quoteId;
 	}
+
 }
