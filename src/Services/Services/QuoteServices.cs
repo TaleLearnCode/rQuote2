@@ -1,4 +1,5 @@
-﻿using TaleLearnCode.rQuote.Responses;
+﻿using TaleLearnCode.rQuote.Extensions;
+using TaleLearnCode.rQuote.Responses;
 
 namespace TaleLearnCode.rQuote;
 
@@ -6,27 +7,9 @@ public static class QuoteServices
 {
 
 	public static async Task<QuoteListResponse> GetQuoteListAsync(SqlContext sqlContext)
-		=> BuildQuoteListResponse(await sqlContext.Quotes.Include(x => x.Author).AsNoTracking().ToListAsync());
+		=> (await sqlContext.Quotes.Include(x => x.Author).AsNoTracking().ToListAsync()).ToListResponse();
 
-	private static QuoteListResponse BuildQuoteListResponse(List<Quote> quotes)
-	{
-		QuoteListResponse response = new()
-		{
-			Count = quotes.Count,
-			TotalCount = quotes.Count,
-			Page = 1,
-			TotalPages = 1
-		};
-		foreach (Quote quote in quotes)
-			response.Results.Add(new()
-			{
-				Id = quote.QuoteId,
-				Content = quote.Content,
-				AuthorId = quote.AuthorId,
-				AuthorName = quote.Author.AuthorName,
-				DateAdded = quote.DateAdded
-			});
-		return response;
-	}
+	public static async Task<QuoteResponse?> GetQuoteAsync(SqlContext sqlContext, int quoteId)
+		=> (await sqlContext.Quotes.Include(x => x.Author).AsNoTracking().FirstOrDefaultAsync(x => x.QuoteId == quoteId)).ToResponse();
 
 }
