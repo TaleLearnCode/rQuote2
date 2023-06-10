@@ -48,9 +48,7 @@ public class QuoteFunctions
 			else
 			{
 				_logger.LogInformation("GetQuoteById - Getting random quote", id);
-				if (!int.TryParse(id, out int quoteId))
-					throw new ArgumentException($"The {nameof(id)} value must be numeric.");
-				return await request.CreateResponseAsync(await QuoteServices.GetQuoteAsync(_sqlContext, quoteId), _jsonSerializerOptions);
+				return await request.CreateResponseAsync(await QuoteServices.GetQuoteAsync(_sqlContext, GetQuoteId(id)), _jsonSerializerOptions);
 			}
 		}
 		catch (Exception ex) when (ex is ArgumentNullException || ex is ArgumentException)
@@ -125,4 +123,42 @@ public class QuoteFunctions
 		}
 	}
 
+
+	[Function("DeleteQuote")]
+	public async Task<HttpResponseData> DeleteQuoteAsync(
+		[HttpTrigger(AuthorizationLevel.Function, "delete", Route = "quotes/{id}")] HttpRequestData request,
+		string id)
+	{
+		try
+		{
+			await QuoteServices.DeleteQuoteAsync(_sqlContext, GetQuoteId(id));
+			return request.CreateResponse(HttpStatusCode.OK);
+		}
+		catch (Exception ex) when (ex is ArgumentNullException || ex is ArgumentException)
+		{
+			return request.CreateBadRequestResponse(ex);
+		}
+		catch (Exception ex) when (ex is ObjectDoesNotExistException<Quote>)
+		{
+			return request.CreateResponse(HttpStatusCode.NotFound);
+		}
+		catch (Exception ex) when (ex is DbUpdateException)
+		{
+			_logger.LogError("{FunctionName} - Entity Framework Exception: {ExceptionMessage}", nameof(CreateQuoteAsync), ex.InnerException?.Message ?? ex.Message);
+			return request.CreateBadRequestResponse(ex.InnerException ?? ex);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError("{FunctionName} - Unexpected exception: {ExceptionMessage}", nameof(GetQuoteByIdAsync), ex.Message);
+			return request.CreateErrorResponse(ex);
+		}
+	}
+
+	private static int GetQuoteId(string id)
+	{
+		ArgumentNullException.ThrowIfNull(id);
+		if (!int.TryParse(id, out int quoteId))
+			throw new ArgumentException($"The {nameof(id)} value must be numeric.");
+		return quoteId;
+	}
 }

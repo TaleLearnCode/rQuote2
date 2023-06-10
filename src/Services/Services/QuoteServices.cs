@@ -53,6 +53,14 @@ public static class QuoteServices
 
 	}
 
+	public static async Task DeleteQuoteAsync(SqlContext sqlContext, int quoteId)
+	{
+		ArgumentNullException.ThrowIfNull(quoteId);
+		Quote? quote = await GetAsync(sqlContext, quoteId) ?? throw new ObjectDoesNotExistException<Quote>();
+		sqlContext.Quotes.Remove(quote);
+		await sqlContext.SaveChangesAsync();
+	}
+
 	private static async Task<List<Quote>> GetListAsync(SqlContext sqlContext)
 		=> await sqlContext.Quotes.Include(x => x.Author).AsNoTracking().ToListAsync();
 
