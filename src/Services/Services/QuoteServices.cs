@@ -38,6 +38,21 @@ public static class QuoteServices
 
 	}
 
+	public static async Task UpdateQuoteAsync(SqlContext sqlContext, QuoteRequest quoteRequest, int quoteId)
+	{
+
+		quoteRequest.ValidateRequestField(nameof(QuoteRequest.AuthorId));
+		quoteRequest.ValidateRequestField(nameof(QuoteRequest.Content));
+
+		Quote? quote = await GetAsync(sqlContext, quoteId) ?? throw new ObjectDoesNotExistException<Quote>();
+
+		quote.AuthorId = quoteRequest.AuthorId;
+		quote.Content = quoteRequest.Content;
+		sqlContext.Quotes.Update(quote);
+		await sqlContext.SaveChangesAsync();
+
+	}
+
 	private static async Task<List<Quote>> GetListAsync(SqlContext sqlContext)
 		=> await sqlContext.Quotes.Include(x => x.Author).AsNoTracking().ToListAsync();
 

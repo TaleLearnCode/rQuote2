@@ -2,6 +2,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Text.Json;
 using TaleLearnCode.rQuote.Entities;
 using TaleLearnCode.rQuote.Exceptions;
@@ -48,7 +49,7 @@ public class QuoteFunctions
 			{
 				_logger.LogInformation("GetQuoteById - Getting random quote", id);
 				if (!int.TryParse(id, out int quoteId))
-					throw new ArgumentException("The id value must be numeric.");
+					throw new ArgumentException($"The {nameof(id)} value must be numeric.");
 				return await request.CreateResponseAsync(await QuoteServices.GetQuoteAsync(_sqlContext, quoteId), _jsonSerializerOptions);
 			}
 		}
@@ -75,6 +76,40 @@ public class QuoteFunctions
 			return request.CreateCreatedResponse(response);
 		}
 		catch (Exception ex) when (ex is HttpRequestDataException || ex is ObjectAlreadyExistsException<Quote>)
+		{
+			return request.CreateBadRequestResponse(ex);
+		}
+		catch (Exception ex) when (ex is DbUpdateException)
+		{
+			_logger.LogError("{FunctionName} - Entity Framework Exception: {ExceptionMessage}", nameof(CreateQuoteAsync), ex.InnerException?.Message ?? ex.Message);
+			return request.CreateBadRequestResponse(ex.InnerException ?? ex);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError("{FunctionName} - Unexpected exception: {ExceptionMessage}", nameof(GetQuoteByIdAsync), ex.Message);
+			return request.CreateErrorResponse(ex);
+		}
+	}
+
+	[Function("UpdateQuote")]
+	public async Task<HttpResponseData> UpdateQuoteAsync(
+		[HttpTrigger(AuthorizationLevel.Function, "put", Route = "quotes/{id}")] HttpRequestData request,
+		string id)
+	{
+		try
+		{
+
+			ArgumentNullException.ThrowIfNull(id);
+			if (!int.TryParse(id, out int quoteId))
+				throw new ArgumentException($"The {nameof(id)} value must be numeric.");
+
+			QuoteRequest quoteRequest = await request.GetRequestParametersAsync<QuoteRequest>(_jsonSerializerOptions);
+			await QuoteServices.UpdateQuoteAsync(_sqlContext, quoteRequest, quoteId);
+
+			return request.CreateResponse(HttpStatusCode.NoContent);
+
+		}
+		catch (Exception ex) when (ex is ArgumentNullException || ex is ArgumentException || ex is HttpRequestDataException || ex is ObjectDoesNotExistException<Quote>)
 		{
 			return request.CreateBadRequestResponse(ex);
 		}
