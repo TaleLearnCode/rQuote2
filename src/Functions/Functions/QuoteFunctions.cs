@@ -29,7 +29,9 @@ public class QuoteFunctions
 		[HttpTrigger(AuthorizationLevel.Function, "get", Route = "quotes")] HttpRequestData request)
 	{
 		_logger.LogInformation("GetQuoteList - Getting list of quotes");
-		return await request.CreateResponseAsync(await QuoteServices.GetQuoteListAsync(_sqlContext), _jsonSerializerOptions);
+		var response = await request.CreateResponseAsync(await QuoteServices.GetQuoteListAsync(_sqlContext), _jsonSerializerOptions);
+		response.Headers.Add("SuperSecretValue", "This could lead to a compromise.");
+		return response;
 	}
 
 	[Function("GetQuoteById")]
@@ -146,6 +148,7 @@ public class QuoteFunctions
 			return request.CreateErrorResponse(ex);
 		}
 	}
+
 
 	private static int GetQuoteId(string id)
 	{
